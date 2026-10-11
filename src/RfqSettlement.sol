@@ -34,6 +34,8 @@ contract RfqSettlement is EIP712 {
     address public immutable quoteToken;
 
     mapping(address => mapping(uint256 => bool)) public nonceUsed;
+    /// @notice Every quote a maker signed with a nonce below this is void, whether or not it was ever used.
+    mapping(address => uint256) public minNonce;
 
     event RfqFilled(
         address indexed maker,
@@ -46,11 +48,13 @@ contract RfqSettlement is EIP712 {
         uint256 mid
     );
     event NonceCancelled(address indexed maker, uint256 nonce);
+    event MinNonceRaised(address indexed maker, uint256 minNonce);
 
     error NotRouter();
     error QuoteExpired();
     error WrongTaker();
     error NonceAlreadyUsed();
+    error NonceTooLow();
     error BadSignature();
     error QuoteAssetRequired();
     error MarketNotListed();
@@ -104,6 +108,7 @@ contract RfqSettlement is EIP712 {
         if (block.timestamp > q.expiry) revert QuoteExpired();
         if (q.taker != address(0) && q.taker != taker) revert WrongTaker();
         if (nonceUsed[q.maker][q.nonce]) revert NonceAlreadyUsed();
+        if (q.nonce < minNonce[q.maker]) revert NonceTooLow();
         nonceUsed[q.maker][q.nonce] = true;
 
         if (!SignatureChecker.isValidSignatureNow(q.maker, quoteDigest(q), signature)) revert BadSignature();
@@ -145,6 +150,20 @@ contract RfqSettlement is EIP712 {
             nonceUsed[msg.sender][nonces[i]] = true;
             emit NonceCancelled(msg.sender, nonces[i]);
         }
+    }
+
+    /// @notice Voids every outstanding quote with a nonce below `floor` in one call, so a maker who loses
+    ///         track of what is in flight, or suspects a leaked key, need not list nonces one by one. The
+    ///         floor only ever rises; makers that use increasing nonces get a full reset for constant gas.
+    function cancelBelow(uint256 floor) external {
+        if (floor <= minNonce[msg.sender]) return;
+        minNonce[msg.sender] = floor;
+        emit MinNonceRaised(msg.sender, floor);
+    }
+
+    /// @notice Whether a quote with this nonce could still settle, as far as nonces are concerned.
+    function nonceUsable(address maker, uint256 nonce) external view returns (bool) {
+        return !nonceUsed[maker][nonce] && nonce >= minNonce[maker];
     }
 
     /// @dev Applies the vault path's listing and halt conditions together with the hard band: regardless

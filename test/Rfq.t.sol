@@ -247,4 +247,39 @@ contract RfqTest is BaseTest {
         rfq.cancel(nonces);
         assertTrue(rfq.nonceUsed(maker, 12));
     }
+
+    function test_cancelBelowVoidsEveryOlderQuote() public {
+        uint256 amountIn = 10_000e6;
+        (uint256 vaultOut,) = nvdaVault.quoteSwap(true, amountIn);
+        Types.MakerQuote memory q = _makerQuote(address(usdg), address(nvda), amountIn, vaultOut + vaultOut / 1000, 9);
+        bytes memory sig = _sign(q);
+
+        vm.prank(maker);
+        rfq.cancelBelow(10);
+        assertFalse(rfq.nonceUsable(maker, 9));
+        assertTrue(rfq.nonceUsable(maker, 10));
+
+        // The router treats the voided quote as absent and the vault takes the fill.
+        uint256 makerNvdaBefore = nvda.balanceOf(maker);
+        uint256 out = _swapWithQuote(q, sig, amountIn);
+        assertEq(out, vaultOut);
+        assertEq(nvda.balanceOf(maker), makerNvdaBefore);
+
+        // Settlement refuses it as well, should anything reach it directly.
+        vm.prank(address(router));
+        vm.expectRevert(RfqSettlement.NonceTooLow.selector);
+        rfq.settle(q, sig, trader, trader);
+    }
+
+    function test_cancelBelowOnlyMovesForward() public {
+        vm.startPrank(maker);
+        rfq.cancelBelow(50);
+        vm.recordLogs();
+        rfq.cancelBelow(20);
+        rfq.cancelBelow(50);
+        vm.stopPrank();
+
+        assertEq(rfq.minNonce(maker), 50);
+        assertEq(vm.getRecordedLogs().length, 0);
+    }
 }

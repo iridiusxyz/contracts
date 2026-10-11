@@ -171,7 +171,7 @@ contract SwapRouter is ReentrancyGuard {
             // attestation after quoting, that is an ordinary race rather than a client mistake: treat it as
             // absent so the vault can still take the fill. A malformed or wrongly signed candidate still
             // reverts loudly in settlement.
-            bool usable = block.timestamp <= p.quote.expiry && !rfq.nonceUsed(p.quote.maker, p.quote.nonce)
+            bool usable = block.timestamp <= p.quote.expiry && rfq.nonceUsable(p.quote.maker, p.quote.nonce)
                 && eligibility.isEligible(p.quote.maker, Roles.MAKER);
             if (usable) {
                 // The RFQ fee is taken from the quote-token leg: on a buy it comes out of the input before
