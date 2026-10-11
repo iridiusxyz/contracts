@@ -25,6 +25,19 @@ contract FeeCollector {
 
     function withdraw(IERC20 token, address to, uint256 amount) external {
         if (msg.sender != params.owner()) revert NotGovernance();
+        // Plenty of tokens accept a transfer to the zero address and simply burn it, so a blank recipient
+        // in a governance proposal would destroy fees instead of failing.
+        if (to == address(0)) revert ZeroAddress();
+        token.safeTransfer(to, amount);
+        emit Withdrawn(address(token), to, amount);
+    }
+
+    /// @notice Sweeps the whole balance of `token`, sparing proposals from having to guess an exact amount
+    ///         that fees accruing in the meantime would already have changed by execution time.
+    function withdrawAll(IERC20 token, address to) external returns (uint256 amount) {
+        if (msg.sender != params.owner()) revert NotGovernance();
+        if (to == address(0)) revert ZeroAddress();
+        amount = token.balanceOf(address(this));
         token.safeTransfer(to, amount);
         emit Withdrawn(address(token), to, amount);
     }
