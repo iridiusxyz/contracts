@@ -98,4 +98,22 @@ contract VaultFactory {
     function marketsLength() external view returns (uint256) {
         return allMarkets.length;
     }
+
+    /// @notice Up to `count` listed tokens and their vaults, starting at `start`, so indexers and front-ends
+    ///         can load the whole registry in a few calls instead of one per index. Reading past the end is
+    ///         not an error; the slice is simply shorter.
+    function markets(uint256 start, uint256 count)
+        external
+        view
+        returns (address[] memory tokens, address[] memory vaults)
+    {
+        uint256 len = allMarkets.length;
+        uint256 end = start >= len ? start : (count > len - start ? len : start + count);
+        tokens = new address[](end - start);
+        vaults = new address[](end - start);
+        for (uint256 i = start; i < end; i++) {
+            tokens[i - start] = allMarkets[i];
+            vaults[i - start] = vaultOf[allMarkets[i]];
+        }
+    }
 }

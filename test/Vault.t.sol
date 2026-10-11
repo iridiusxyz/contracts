@@ -204,4 +204,22 @@ contract VaultTest is BaseTest {
         uint256 lpSpread = nvdaVault.totalValue() * 1e18 / shares;
         assertGt(lpSpread, valueBefore * 1e18 / shares);
     }
+
+    function test_marketsPagesThroughTheRegistry() public view {
+        (address[] memory tokens, address[] memory vaults) = factory.markets(0, 10);
+        assertEq(tokens.length, 2);
+        assertEq(tokens[0], address(nvda));
+        assertEq(vaults[0], address(nvdaVault));
+        assertEq(tokens[1], address(spy));
+        assertEq(vaults[1], address(spyVault));
+
+        (tokens, vaults) = factory.markets(1, 1);
+        assertEq(tokens.length, 1);
+        assertEq(vaults[0], address(spyVault));
+
+        (tokens,) = factory.markets(5, 3);
+        assertEq(tokens.length, 0);
+        (tokens,) = factory.markets(0, type(uint256).max);
+        assertEq(tokens.length, 2);
+    }
 }
