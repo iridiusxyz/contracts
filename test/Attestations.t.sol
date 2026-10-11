@@ -86,4 +86,38 @@ contract AttestationsTest is BaseTest {
         attestations.attest(trader, Roles.TRADER, "LT", 2, uint64(block.timestamp + 1 days));
         assertTrue(eligibility.isEligible(trader, Roles.TRADER));
     }
+
+    function test_batchAttestsEveryAccount() public {
+        address[] memory accounts = new address[](3);
+        accounts[0] = makeAddr("a");
+        accounts[1] = makeAddr("b");
+        accounts[2] = makeAddr("c");
+
+        vm.prank(issuer);
+        bytes32[] memory uids =
+            attestations.attestBatch(accounts, Roles.TRADER, "LT", 2, uint64(block.timestamp + 1 days));
+
+        assertEq(uids.length, 3);
+        for (uint256 i = 0; i < accounts.length; i++) {
+            (bytes32 uid,) = attestations.attestationOf(accounts[i], Roles.TRADER);
+            assertEq(uid, uids[i]);
+            assertTrue(eligibility.isEligible(accounts[i], Roles.TRADER));
+        }
+        assertTrue(uids[0] != uids[1] && uids[1] != uids[2]);
+    }
+
+    function test_batchIsAllOrNothing() public {
+        address[] memory accounts = new address[](2);
+        accounts[0] = makeAddr("a");
+        accounts[1] = address(0);
+
+        vm.prank(issuer);
+        vm.expectRevert(NativeAttestationAdapter.ZeroAddress.selector);
+        attestations.attestBatch(accounts, Roles.TRADER, "LT", 2, uint64(block.timestamp + 1 days));
+        assertFalse(eligibility.isEligible(accounts[0], Roles.TRADER));
+
+        vm.prank(outsider);
+        vm.expectRevert(NativeAttestationAdapter.NotIssuer.selector);
+        attestations.attestBatch(accounts, Roles.TRADER, "LT", 2, uint64(block.timestamp + 1 days));
+    }
 }

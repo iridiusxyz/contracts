@@ -58,6 +58,28 @@ contract NativeAttestationAdapter is IEligibilityAdapter {
         onlyIssuer
         returns (bytes32 uid)
     {
+        return _attest(account, role, jurisdictionClass, investorClass, expiry);
+    }
+
+    /// @notice Attests a list of accounts to one role with the same classes and expiry, which is how an
+    ///         issuer onboards a cohort cleared by the same review. Any invalid entry reverts the whole batch.
+    function attestBatch(
+        address[] calldata accounts,
+        bytes32 role,
+        bytes2 jurisdictionClass,
+        uint8 investorClass,
+        uint64 expiry
+    ) external onlyIssuer returns (bytes32[] memory uids) {
+        uids = new bytes32[](accounts.length);
+        for (uint256 i = 0; i < accounts.length; i++) {
+            uids[i] = _attest(accounts[i], role, jurisdictionClass, investorClass, expiry);
+        }
+    }
+
+    function _attest(address account, bytes32 role, bytes2 jurisdictionClass, uint8 investorClass, uint64 expiry)
+        internal
+        returns (bytes32 uid)
+    {
         if (expiry <= block.timestamp) revert BadExpiry();
         // No wallet can ever act as the zero account, so a record for it would only clutter the audit trail.
         if (account == address(0)) revert ZeroAddress();
