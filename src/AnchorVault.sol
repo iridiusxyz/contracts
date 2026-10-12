@@ -69,6 +69,7 @@ contract AnchorVault is ERC20, ReentrancyGuard {
     error NoLiquidity();
     error ZeroAmount();
     error ZeroShares();
+    error ZeroAddress();
     error Slippage(uint256 shares, uint256 minShares);
     error BandExceeded();
     error ClipExceeded(uint256 notional, uint256 clip);
@@ -149,6 +150,9 @@ contract AnchorVault is ERC20, ReentrancyGuard {
         returns (uint256 quoteOut, uint256 tokenOut)
     {
         if (shares == 0) revert ZeroShares();
+        // Many tokens accept a transfer to the zero address and burn it, so a missing receiver would
+        // destroy the LP's slice of the vault rather than fail.
+        if (receiver == address(0)) revert ZeroAddress();
         (quoteOut, tokenOut) = previewWithdraw(shares);
         _burn(msg.sender, shares);
         if (quoteOut != 0) quoteToken.safeTransfer(receiver, quoteOut);

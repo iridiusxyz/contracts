@@ -222,4 +222,12 @@ contract VaultTest is BaseTest {
         (tokens,) = factory.markets(0, type(uint256).max);
         assertEq(tokens.length, 2);
     }
+
+    function test_withdrawRefusesTheZeroReceiver() public {
+        uint256 shares = _seed(nvdaVault, NVDA_MID);
+        vm.prank(lp1);
+        vm.expectRevert(AnchorVault.ZeroAddress.selector);
+        nvdaVault.withdraw(shares, address(0));
+        assertEq(nvdaVault.balanceOf(lp1), shares);
+    }
 }
