@@ -244,6 +244,15 @@ contract AnchorVault is ERC20, ReentrancyGuard {
         return used >= cap ? 0 : cap - used;
     }
 
+    /// @notice How much more value, in quote units at the present mid, deposits can add before the TVL cap
+    ///         is reached. Deposits revert above it, so front-ends can size an LP's deposit against this
+    ///         instead of finding the limit by trial. Reverts when the oracle cannot be used.
+    function remainingTvlCap() external view returns (uint256) {
+        uint256 cap = params.marketConfig(address(token)).tvlCap;
+        uint256 total = _totalValue(_liveMid());
+        return total >= cap ? 0 : cap - total;
+    }
+
     /// @notice Share of vault value held in the token, in bps; 5_000 means exactly on target.
     function inventoryRatioBps() external view returns (uint256) {
         uint256 mid = _liveMid();

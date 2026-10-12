@@ -230,4 +230,19 @@ contract VaultTest is BaseTest {
         nvdaVault.withdraw(shares, address(0));
         assertEq(nvdaVault.balanceOf(lp1), shares);
     }
+
+    function test_remainingTvlCapTracksDeposits() public {
+        assertEq(nvdaVault.remainingTvlCap(), 5_000_000e6);
+        _seed(nvdaVault, NVDA_MID);
+        uint256 headroom = nvdaVault.remainingTvlCap();
+        assertEq(headroom, 5_000_000e6 - nvdaVault.totalValue());
+
+        // Exactly the headroom fits; one unit more does not.
+        vm.prank(lp1);
+        vm.expectRevert(AnchorVault.TvlCapExceeded.selector);
+        nvdaVault.deposit(headroom + 1, 0, 0, lp1);
+        vm.prank(lp1);
+        nvdaVault.deposit(headroom, 0, 0, lp1);
+        assertEq(nvdaVault.remainingTvlCap(), 0);
+    }
 }
