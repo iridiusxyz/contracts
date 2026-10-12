@@ -7,6 +7,10 @@ import {IEligibilityRegistry} from "./interfaces/IEligibilityRegistry.sol";
 import {IOracleRouter} from "./interfaces/IOracleRouter.sol";
 import {AnchorVault} from "./AnchorVault.sol";
 
+interface IFactoryBound {
+    function factory() external view returns (address);
+}
+
 /// @title VaultFactory
 /// @notice Creates a single AnchorVault for each listed token and acts as the registry where the router finds
 ///         vaults. Only governance can open a market; its parameters are held in the ParamController, and
@@ -30,6 +34,7 @@ contract VaultFactory {
     error NotGovernance();
     error RouterAlreadySet();
     error RouterNotSet();
+    error RouterMismatch();
     error MarketExists();
     error MarketNotConfigured();
     error QuoteAssetNotListable();
@@ -63,6 +68,10 @@ contract VaultFactory {
         // The router can only be set once, so a zero address here would leave the factory permanently unusable.
         if (router_ == address(0)) revert ZeroAddress();
         if (router != address(0)) revert RouterAlreadySet();
+        // The router resolves vaults through its own factory. Wiring one built for another deployment would
+        // let it call these vaults while routing trades against a different registry, and since this can
+        // never be undone, the mismatch has to be caught here.
+        if (IFactoryBound(router_).factory() != address(this)) revert RouterMismatch();
         router = router_;
         emit RouterSet(router_);
     }

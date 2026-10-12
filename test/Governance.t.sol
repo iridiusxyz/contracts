@@ -6,6 +6,7 @@ import {Roles} from "../src/libraries/Types.sol";
 import {ParamController} from "../src/ParamController.sol";
 import {IParamController} from "../src/interfaces/IParamController.sol";
 import {VaultFactory} from "../src/VaultFactory.sol";
+import {SwapRouter} from "../src/SwapRouter.sol";
 import {IOracleRouter} from "../src/interfaces/IOracleRouter.sol";
 import {NativeAttestationAdapter} from "../src/adapters/NativeAttestationAdapter.sol";
 import {MockStockToken} from "../src/mocks/Mocks.sol";
@@ -301,5 +302,19 @@ contract GovernanceTest is BaseTest {
         vm.expectRevert(ParamController.ZeroAddress.selector);
         params.setEligibilityAdapter(address(0));
         assertEq(params.eligibilityAdapter(), address(attestations));
+    }
+
+    function test_routerMustBeBoundToTheFactory() public {
+        VaultFactory fresh = new VaultFactory(params, eligibility, oracle, address(fees), address(usdg));
+
+        // The fixture's router belongs to the fixture's factory, not this one.
+        vm.prank(gov);
+        vm.expectRevert(VaultFactory.RouterMismatch.selector);
+        fresh.setRouter(address(router));
+
+        SwapRouter bound = new SwapRouter(params, eligibility, fresh, rfq);
+        vm.prank(gov);
+        fresh.setRouter(address(bound));
+        assertEq(fresh.router(), address(bound));
     }
 }
