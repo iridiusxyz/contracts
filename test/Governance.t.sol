@@ -295,4 +295,11 @@ contract GovernanceTest is BaseTest {
         );
         params.execute(calls, bytes32("salt"));
     }
+
+    function test_eligibilityAdapterCannotBeCleared() public {
+        vm.prank(gov);
+        vm.expectRevert(ParamController.ZeroAddress.selector);
+        params.setEligibilityAdapter(address(0));
+        assertEq(params.eligibilityAdapter(), address(attestations));
+    }
 }

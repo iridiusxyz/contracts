@@ -265,6 +265,9 @@ contract ParamController is IParamController {
     }
 
     function setEligibilityAdapter(address adapter) external onlySelf {
+        // With no adapter the registry reverts on every check, which blocks all swaps and deposits at once.
+        // That is what the guardian's pause is for; it should never happen as a side effect of a typo.
+        if (adapter == address(0)) revert ZeroAddress();
         eligibilityAdapter = adapter;
         emit ParamChanged("eligibilityAdapter", bytes32(uint256(uint160(adapter))), "");
     }
