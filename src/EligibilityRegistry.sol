@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 
 import {IEligibilityRegistry, IEligibilityAdapter} from "./interfaces/IEligibilityRegistry.sol";
 import {IParamController} from "./interfaces/IParamController.sol";
+import {Roles} from "./libraries/Types.sol";
 
 /// @title EligibilityRegistry
 /// @notice Decides who is allowed to trade, supply liquidity and make markets. Policy lives in an adapter
@@ -31,6 +32,15 @@ contract EligibilityRegistry is IEligibilityRegistry {
 
     function requireRole(address account, bytes32 role) external view override {
         if (!isEligible(account, role)) revert NotEligible(account, role);
+    }
+
+    /// @notice Every protocol role an account holds right now, in one call. Front-ends use it to decide which
+    ///         screens to show without three separate round trips through the adapter.
+    function rolesOf(address account) external view returns (bool trader, bool lp, bool maker) {
+        IEligibilityAdapter a = adapter();
+        trader = a.isEligible(account, Roles.TRADER);
+        lp = a.isEligible(account, Roles.LP);
+        maker = a.isEligible(account, Roles.MAKER);
     }
 
     function attestationOf(address account, bytes32 role) external view override returns (bytes32 uid, uint64 expiry) {
