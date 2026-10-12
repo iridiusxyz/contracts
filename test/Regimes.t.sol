@@ -7,6 +7,7 @@ import {OracleRouter} from "../src/OracleRouter.sol";
 import {SwapRouter} from "../src/SwapRouter.sol";
 import {AggregatorV3Interface} from "../src/interfaces/IExternal.sol";
 import {IOracleRouter} from "../src/interfaces/IOracleRouter.sol";
+import {IParamController} from "../src/interfaces/IParamController.sol";
 import {Types} from "../src/libraries/Types.sol";
 import {MockStreamAdapter} from "../src/mocks/Mocks.sol";
 
@@ -315,5 +316,21 @@ contract RegimesTest is BaseTest {
         // Pricing resumes with the first answer that rounds to a whole quote unit.
         nvdaFeed.set(100);
         assertEq(oracle.quote(address(nvda)).price, 1);
+    }
+
+    function test_deploymentRefusesAZeroController() public {
+        vm.expectRevert(OracleRouter.ZeroAddress.selector);
+        new OracleRouter(IParamController(address(0)));
+    }
+
+    function test_repeatPauseLeavesOneRecord() public {
+        vm.startPrank(gov);
+        oracle.pause(address(nvda));
+        vm.recordLogs();
+        oracle.pause(address(nvda));
+        vm.stopPrank();
+
+        assertEq(vm.getRecordedLogs().length, 0);
+        assertTrue(oracle.quote(address(nvda)).paused);
     }
 }

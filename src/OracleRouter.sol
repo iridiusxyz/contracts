@@ -74,6 +74,7 @@ contract OracleRouter is IOracleRouter {
     event Checkpointed(address indexed token, uint256 price);
 
     error NotGovernance();
+    error ZeroAddress();
     error InvalidFeedConfig();
     error InvalidSchedule();
     error MarketHalted(address token);
@@ -86,6 +87,9 @@ contract OracleRouter is IOracleRouter {
     }
 
     constructor(IParamController params_) {
+        // Every governance check and the sequencer grace period read the controller, so without one the
+        // router could never be configured.
+        if (address(params_) == address(0)) revert ZeroAddress();
         params = params_;
         // US equities in UTC, standard time: regular 14:30 to 21:00, extended 09:00 to 01:00 the following day.
         Schedule memory s = Schedule({
@@ -163,6 +167,8 @@ contract OracleRouter is IOracleRouter {
     }
 
     function pause(address token) external onlyGovernance {
+        // A repeat pause changes nothing, so it should not leave a second pause in the audit trail.
+        if (_checkpoints[token].paused) return;
         _checkpoints[token].paused = true;
         emit MarketPausedEvent(token, _checkpoints[token].lastPrice, 0);
     }
