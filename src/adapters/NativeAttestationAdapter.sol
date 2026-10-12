@@ -98,6 +98,18 @@ contract NativeAttestationAdapter is IEligibilityAdapter {
 
     /// @notice Revokes with immediate effect. Revocation is open to any whitelisted issuer, letting others override a compromised one.
     function revoke(address account, bytes32 role) external onlyIssuer {
+        _revoke(account, role);
+    }
+
+    /// @notice Revokes one role from a list of accounts, for when an issuer has to withdraw a whole cohort
+    ///         at once, for example after a review is found to be flawed. One unknown account reverts the batch.
+    function revokeBatch(address[] calldata accounts, bytes32 role) external onlyIssuer {
+        for (uint256 i = 0; i < accounts.length; i++) {
+            _revoke(accounts[i], role);
+        }
+    }
+
+    function _revoke(address account, bytes32 role) internal {
         Attestation storage a = _attestations[account][role];
         // Revoking something never issued would create a phantom entry and emit a zero uid, cluttering
         // the audit trail; a mistyped account from an issuer ought to fail visibly instead.

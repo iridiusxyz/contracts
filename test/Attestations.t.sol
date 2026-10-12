@@ -120,4 +120,30 @@ contract AttestationsTest is BaseTest {
         vm.expectRevert(NativeAttestationAdapter.NotIssuer.selector);
         attestations.attestBatch(accounts, Roles.TRADER, "LT", 2, uint64(block.timestamp + 1 days));
     }
+
+    function test_revokeBatchEndsEveryAttestation() public {
+        address[] memory accounts = new address[](2);
+        accounts[0] = lp1;
+        accounts[1] = lp2;
+
+        vm.prank(issuer);
+        attestations.revokeBatch(accounts, Roles.LP);
+        assertFalse(eligibility.isEligible(lp1, Roles.LP));
+        assertFalse(eligibility.isEligible(lp2, Roles.LP));
+    }
+
+    function test_revokeBatchIsAllOrNothing() public {
+        address[] memory accounts = new address[](2);
+        accounts[0] = lp1;
+        accounts[1] = outsider; // never attested
+
+        vm.prank(issuer);
+        vm.expectRevert(NativeAttestationAdapter.NotAttested.selector);
+        attestations.revokeBatch(accounts, Roles.LP);
+        assertTrue(eligibility.isEligible(lp1, Roles.LP));
+
+        vm.prank(outsider);
+        vm.expectRevert(NativeAttestationAdapter.NotIssuer.selector);
+        attestations.revokeBatch(accounts, Roles.LP);
+    }
 }
