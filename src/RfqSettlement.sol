@@ -53,6 +53,7 @@ contract RfqSettlement is EIP712 {
     error NotRouter();
     error QuoteExpired();
     error WrongTaker();
+    error SelfTrade();
     error NonceAlreadyUsed();
     error NonceTooLow();
     error BadSignature();
@@ -107,6 +108,8 @@ contract RfqSettlement is EIP712 {
         if (q.amountIn == 0 || q.amountOut == 0) revert ZeroAmount();
         if (block.timestamp > q.expiry) revert QuoteExpired();
         if (q.taker != address(0) && q.taker != taker) revert WrongTaker();
+        // A maker filling its own quote moves nothing but the fee, and only serves to print volume.
+        if (q.maker == taker) revert SelfTrade();
         if (nonceUsed[q.maker][q.nonce]) revert NonceAlreadyUsed();
         if (q.nonce < minNonce[q.maker]) revert NonceTooLow();
         nonceUsed[q.maker][q.nonce] = true;

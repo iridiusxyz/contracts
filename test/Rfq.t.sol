@@ -282,4 +282,22 @@ contract RfqTest is BaseTest {
         assertEq(rfq.minNonce(maker), 50);
         assertEq(vm.getRecordedLogs().length, 0);
     }
+
+    function test_makerCannotFillItsOwnQuote() public {
+        vm.prank(issuer);
+        attestations.attest(maker, Roles.TRADER, "IE", 3, uint64(block.timestamp + 1 days));
+        vm.prank(maker);
+        usdg.approve(address(router), type(uint256).max);
+
+        uint256 amountIn = 10_000e6;
+        (uint256 vaultOut,) = nvdaVault.quoteSwap(true, amountIn);
+        Types.MakerQuote memory q = _makerQuote(address(usdg), address(nvda), amountIn, vaultOut + vaultOut / 1000, 1);
+        SwapRouter.SwapParams memory p = _params(q.tokenIn, q.tokenOut, amountIn, 0);
+        p.quote = q;
+        p.quoteSig = _sign(q);
+
+        vm.prank(maker);
+        vm.expectRevert(RfqSettlement.SelfTrade.selector);
+        router.swapExactIn(p);
+    }
 }
