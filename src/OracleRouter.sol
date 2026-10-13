@@ -147,7 +147,14 @@ contract OracleRouter is IOracleRouter {
         emit FeedConfigured(token, address(feed), fd, qd);
     }
 
+    /// @notice Points the router at the L2 sequencer uptime feed, or at nothing with the zero address.
     function setSequencerFeed(AggregatorV3Interface feed) external onlyGovernance {
+        // An uptime feed only ever answers 0 (up) or 1 (down). A price feed passed here by mistake would
+        // answer with a price, which `_sequencerGrace` reads as "down", halting every market at once.
+        if (address(feed) != address(0)) {
+            (, int256 answer,,,) = feed.latestRoundData();
+            if (answer != 0 && answer != 1) revert InvalidFeedConfig();
+        }
         sequencerFeed = feed;
         emit SequencerFeedSet(address(feed));
     }

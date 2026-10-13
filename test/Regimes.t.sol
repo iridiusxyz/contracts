@@ -347,4 +347,17 @@ contract RegimesTest is BaseTest {
         vm.warp(block.timestamp + 2 hours); // past the regular-session staleness bound
         assertFalse(oracle.isLive(address(nvda)));
     }
+
+    function test_sequencerFeedMustBeAnUptimeFeed() public {
+        vm.startPrank(gov);
+        // A price feed answers with a price, not 0 or 1.
+        vm.expectRevert(OracleRouter.InvalidFeedConfig.selector);
+        oracle.setSequencerFeed(AggregatorV3Interface(address(nvdaFeed)));
+
+        // Clearing the feed is still allowed, as is setting a real uptime feed.
+        oracle.setSequencerFeed(AggregatorV3Interface(address(0)));
+        oracle.setSequencerFeed(AggregatorV3Interface(address(sequencer)));
+        vm.stopPrank();
+        assertEq(address(oracle.sequencerFeed()), address(sequencer));
+    }
 }
