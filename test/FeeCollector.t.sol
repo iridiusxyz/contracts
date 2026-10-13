@@ -49,4 +49,25 @@ contract FeeCollectorTest is BaseTest {
         assertEq(usdg.balanceOf(treasury), 234e6);
         assertEq(usdg.balanceOf(address(fees)), 1_000e6);
     }
+
+    function test_withdrawAllManySweepsEachToken() public {
+        nvda.mint(address(fees), 3e18);
+        IERC20[] memory tokens = new IERC20[](3);
+        tokens[0] = IERC20(address(usdg));
+        tokens[1] = IERC20(address(nvda));
+        tokens[2] = IERC20(address(spy)); // nothing held
+
+        vm.prank(gov);
+        uint256[] memory amounts = fees.withdrawAllMany(tokens, treasury);
+
+        assertEq(amounts[0], 1_234e6);
+        assertEq(amounts[1], 3e18);
+        assertEq(amounts[2], 0);
+        assertEq(usdg.balanceOf(treasury), 1_234e6);
+        assertEq(nvda.balanceOf(treasury), 3e18);
+
+        vm.prank(outsider);
+        vm.expectRevert(FeeCollector.NotGovernance.selector);
+        fees.withdrawAllMany(tokens, outsider);
+    }
 }

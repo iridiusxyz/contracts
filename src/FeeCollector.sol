@@ -37,7 +37,23 @@ contract FeeCollector {
     function withdrawAll(IERC20 token, address to) external returns (uint256 amount) {
         if (msg.sender != params.owner()) revert NotGovernance();
         if (to == address(0)) revert ZeroAddress();
+        amount = _sweep(token, to);
+    }
+
+    /// @notice Sweeps the full balance of each token in `tokens`, so a treasury proposal can collect
+    ///         every fee asset in one call. Tokens with nothing to sweep are skipped.
+    function withdrawAllMany(IERC20[] calldata tokens, address to) external returns (uint256[] memory amounts) {
+        if (msg.sender != params.owner()) revert NotGovernance();
+        if (to == address(0)) revert ZeroAddress();
+        amounts = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            amounts[i] = _sweep(tokens[i], to);
+        }
+    }
+
+    function _sweep(IERC20 token, address to) internal returns (uint256 amount) {
         amount = token.balanceOf(address(this));
+        if (amount == 0) return 0;
         token.safeTransfer(to, amount);
         emit Withdrawn(address(token), to, amount);
     }
