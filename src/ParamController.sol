@@ -126,6 +126,13 @@ contract ParamController is IParamController {
         return keccak256(abi.encode(calls, salt));
     }
 
+    /// @notice Whether a queued batch can be executed now: scheduled, neither cancelled nor executed, and past
+    ///         its timelock. Lets an executor bot check readiness without replaying `execute` to see if it reverts.
+    function operationReady(bytes32 id) external view returns (bool) {
+        Operation storage op = operations[id];
+        return op.eta != 0 && !op.cancelled && !op.executed && block.timestamp >= op.eta;
+    }
+
     /// @notice Queues a batch of setter calls, with `rationale` holding the hash of the rationale that was published.
     function schedule(bytes[] calldata calls, bytes32 salt, bytes32 rationale) external onlyOwner returns (bytes32 id) {
         id = operationId(calls, salt);

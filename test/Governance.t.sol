@@ -317,4 +317,22 @@ contract GovernanceTest is BaseTest {
         fresh.setRouter(address(bound));
         assertEq(fresh.router(), address(bound));
     }
+
+    function test_operationReadyFollowsTheLifecycle() public {
+        vm.prank(gov);
+        params.finishBootstrap();
+        bytes[] memory calls = _feeCall(5);
+        vm.prank(gov);
+        bytes32 id = params.schedule(calls, bytes32("ready"), bytes32(0));
+        assertFalse(params.operationReady(id));
+
+        (uint64 eta,,,) = params.operations(id);
+        vm.warp(eta);
+        assertTrue(params.operationReady(id));
+
+        vm.prank(gov);
+        params.execute(calls, bytes32("ready"));
+        assertFalse(params.operationReady(id));
+        assertFalse(params.operationReady(bytes32("unknown")));
+    }
 }
