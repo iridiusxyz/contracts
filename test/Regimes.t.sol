@@ -333,4 +333,18 @@ contract RegimesTest is BaseTest {
         assertEq(vm.getRecordedLogs().length, 0);
         assertTrue(oracle.quote(address(nvda)).paused);
     }
+
+    function test_isLiveMirrorsTheHaltConditions() public {
+        assertTrue(oracle.isLive(address(nvda)));
+        // An unconfigured token reports false rather than reverting.
+        assertFalse(oracle.isLive(address(usdg)));
+
+        nvda.setOraclePaused(true);
+        assertFalse(oracle.isLive(address(nvda)));
+        nvda.setOraclePaused(false);
+        assertTrue(oracle.isLive(address(nvda)));
+
+        vm.warp(block.timestamp + 2 hours); // past the regular-session staleness bound
+        assertFalse(oracle.isLive(address(nvda)));
+    }
 }

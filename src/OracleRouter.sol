@@ -239,6 +239,17 @@ contract OracleRouter is IOracleRouter {
         if (diff * Types.BPS / q.price > c.streamDivergenceBps) revert StreamDivergence(q.price, price);
     }
 
+    /// @notice Whether the market can trade on this price right now: configured, valid, and neither paused,
+    ///         stale nor inside the sequencer grace period. Never reverts, so dashboards and keepers can poll
+    ///         it for every market without having to decode the reason a quote failed.
+    function isLive(address token) external view returns (bool) {
+        try this.quote(token) returns (Quote memory q) {
+            return !(q.paused || q.stale || q.sequencerGrace);
+        } catch {
+            return false;
+        }
+    }
+
     function tokenDecimals(address token) external view override returns (uint8) {
         FeedConfig storage c = _feeds[token];
         if (!c.configured) revert FeedNotConfigured(token);
