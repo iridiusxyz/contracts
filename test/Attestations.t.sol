@@ -146,4 +146,14 @@ contract AttestationsTest is BaseTest {
         vm.expectRevert(NativeAttestationAdapter.NotIssuer.selector);
         attestations.revokeBatch(accounts, Roles.LP);
     }
+
+    function test_attestRefusesUnknownRoles() public {
+        vm.prank(issuer);
+        vm.expectRevert(NativeAttestationAdapter.UnknownRole.selector);
+        attestations.attest(outsider, keccak256("iridius.role.TRADERS"), "LT", 2, uint64(block.timestamp + 1 days));
+
+        vm.prank(issuer);
+        attestations.attest(outsider, Roles.RELAYER, "LT", 2, uint64(block.timestamp + 1 days));
+        assertTrue(eligibility.isEligible(outsider, Roles.RELAYER));
+    }
 }

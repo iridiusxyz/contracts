@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 
 import {IEligibilityAdapter} from "../interfaces/IEligibilityRegistry.sol";
 import {IParamController} from "../interfaces/IParamController.sol";
+import {Roles} from "../libraries/Types.sol";
 
 /// @title NativeAttestationAdapter
 /// @notice A standalone attestation store whose semantics match EAS, for use where no EAS deployment
@@ -39,6 +40,7 @@ contract NativeAttestationAdapter is IEligibilityAdapter {
     error NotIssuer();
     error BadExpiry();
     error NotAttested();
+    error UnknownRole();
     error ZeroAddress();
 
     modifier onlyIssuer() {
@@ -81,6 +83,11 @@ contract NativeAttestationAdapter is IEligibilityAdapter {
         returns (bytes32 uid)
     {
         if (expiry <= block.timestamp) revert BadExpiry();
+        // Roles are hashes, so a typo in one still produces a valid-looking value. The record would be
+        // written and the account would still fail every check, so reject anything the protocol never asks about.
+        if (role != Roles.TRADER && role != Roles.LP && role != Roles.MAKER && role != Roles.RELAYER) {
+            revert UnknownRole();
+        }
         // No wallet can ever act as the zero account, so a record for it would only clutter the audit trail.
         if (account == address(0)) revert ZeroAddress();
         uid = keccak256(abi.encodePacked(account, role, msg.sender, ++nonce, block.chainid));
