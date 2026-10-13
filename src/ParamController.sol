@@ -85,6 +85,7 @@ contract ParamController is IParamController {
     error InvalidCap();
     error DelayTooShort();
     error DelayTooLong();
+    error InvalidGrace();
     error ZeroAddress();
 
     // ---------------------------------------------------------------------
@@ -255,7 +256,14 @@ contract ParamController is IParamController {
         emit ParamChanged("regimeParams", bytes32(0), abi.encode(p));
     }
 
+    /// @notice The longest sequencer grace the controller accepts. Past a day the halt stops protecting
+    ///         against a frozen mid and simply keeps a recovered market closed.
+    uint256 public constant MAX_SEQUENCER_GRACE = 1 days;
+
     function setRiskParams(RiskParams calldata p) external onlySelf {
+        // A zero grace lets trading restart in the very block the sequencer comes back, on a mid that froze
+        // during the outage, which is exactly what the grace period exists to prevent.
+        if (p.sequencerGrace == 0 || p.sequencerGrace > MAX_SEQUENCER_GRACE) revert InvalidGrace();
         _riskParams = p;
         emit ParamChanged("riskParams", bytes32(0), abi.encode(p));
     }

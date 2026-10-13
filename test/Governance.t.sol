@@ -335,4 +335,16 @@ contract GovernanceTest is BaseTest {
         assertFalse(params.operationReady(id));
         assertFalse(params.operationReady(bytes32("unknown")));
     }
+
+    function test_sequencerGraceMustBeMeaningful() public {
+        vm.startPrank(gov);
+        vm.expectRevert(ParamController.InvalidGrace.selector);
+        params.setRiskParams(IParamController.RiskParams({sequencerGrace: 0}));
+        vm.expectRevert(ParamController.InvalidGrace.selector);
+        params.setRiskParams(IParamController.RiskParams({sequencerGrace: 1 days + 1}));
+
+        params.setRiskParams(IParamController.RiskParams({sequencerGrace: 1 days}));
+        vm.stopPrank();
+        assertEq(params.riskParams().sequencerGrace, 1 days);
+    }
 }
