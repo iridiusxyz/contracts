@@ -245,4 +245,23 @@ contract VaultTest is BaseTest {
         nvdaVault.deposit(headroom, 0, 0, lp1);
         assertEq(nvdaVault.remainingTvlCap(), 0);
     }
+
+    function test_withdrawWithMinimumsBoundsEachSide() public {
+        uint256 shares = _seed(nvdaVault, NVDA_MID);
+        (uint256 quoteOut, uint256 tokenOut) = nvdaVault.previewWithdraw(shares / 2);
+
+        vm.prank(lp1);
+        vm.expectRevert(abi.encodeWithSelector(AnchorVault.WithdrawSlippage.selector, quoteOut, tokenOut));
+        nvdaVault.withdrawWithMinimums(shares / 2, lp1, quoteOut + 1, tokenOut);
+
+        vm.prank(lp1);
+        vm.expectRevert(abi.encodeWithSelector(AnchorVault.WithdrawSlippage.selector, quoteOut, tokenOut));
+        nvdaVault.withdrawWithMinimums(shares / 2, lp1, quoteOut, tokenOut + 1);
+
+        vm.prank(lp1);
+        (uint256 q, uint256 t) = nvdaVault.withdrawWithMinimums(shares / 2, lp1, quoteOut, tokenOut);
+        assertEq(q, quoteOut);
+        assertEq(t, tokenOut);
+        assertEq(nvdaVault.balanceOf(lp1), shares - shares / 2);
+    }
 }

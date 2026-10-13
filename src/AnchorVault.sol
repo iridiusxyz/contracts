@@ -71,6 +71,7 @@ contract AnchorVault is ERC20, ReentrancyGuard {
     error ZeroShares();
     error ZeroAddress();
     error Slippage(uint256 shares, uint256 minShares);
+    error WithdrawSlippage(uint256 quoteOut, uint256 tokenOut);
     error BandExceeded();
     error ClipExceeded(uint256 notional, uint256 clip);
     error InsufficientInventory(uint256 needed, uint256 available);
@@ -149,6 +150,22 @@ contract AnchorVault is ERC20, ReentrancyGuard {
         nonReentrant
         returns (uint256 quoteOut, uint256 tokenOut)
     {
+        return _withdraw(shares, receiver);
+    }
+
+    /// @notice `withdraw` with a floor on each side of the payout. The slice is pro-rata, so its value is
+    ///         fair, but a swap landing just before it changes the mix of assets: an LP who needs a certain
+    ///         amount of one of them can insist on it, and the withdrawal reverts instead of paying less.
+    function withdrawWithMinimums(uint256 shares, address receiver, uint256 minQuoteOut, uint256 minTokenOut)
+        external
+        nonReentrant
+        returns (uint256 quoteOut, uint256 tokenOut)
+    {
+        (quoteOut, tokenOut) = _withdraw(shares, receiver);
+        if (quoteOut < minQuoteOut || tokenOut < minTokenOut) revert WithdrawSlippage(quoteOut, tokenOut);
+    }
+
+    function _withdraw(uint256 shares, address receiver) internal returns (uint256 quoteOut, uint256 tokenOut) {
         if (shares == 0) revert ZeroShares();
         // Many tokens accept a transfer to the zero address and burn it, so a missing receiver would
         // destroy the LP's slice of the vault rather than fail.
