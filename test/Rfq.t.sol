@@ -300,4 +300,33 @@ contract RfqTest is BaseTest {
         vm.expectRevert(RfqSettlement.SelfTrade.selector);
         router.swapExactIn(p);
     }
+
+    function test_quoteFillableTracksTheQuotesState() public {
+        Types.MakerQuote memory q = _makerQuote(address(usdg), address(nvda), 10_000e6, 56e18, 4);
+        bytes memory sig = _sign(q);
+        assertTrue(rfq.quoteFillable(q, sig, trader));
+
+        // Wrong signature, the maker as taker, and a reserved quote for someone else all fail.
+        bytes memory bad = sig;
+        bad[0] = bad[0] ^ 0x01;
+        assertFalse(rfq.quoteFillable(q, bad, trader));
+        assertFalse(rfq.quoteFillable(q, sig, maker));
+        Types.MakerQuote memory reserved = q;
+        reserved.taker = outsider;
+        assertFalse(rfq.quoteFillable(reserved, _sign(reserved), trader));
+
+        // Cancelling the nonce kills it.
+        uint256[] memory nonces = new uint256[](1);
+        nonces[0] = 4;
+        vm.prank(maker);
+        rfq.cancel(nonces);
+        assertFalse(rfq.quoteFillable(q, sig, trader));
+    }
+
+    function test_quoteFillableEndsAtExpiry() public {
+        Types.MakerQuote memory q = _makerQuote(address(usdg), address(nvda), 10_000e6, 56e18, 5);
+        bytes memory sig = _sign(q);
+        vm.warp(q.expiry + 1);
+        assertFalse(rfq.quoteFillable(q, sig, trader));
+    }
 }

@@ -143,6 +143,22 @@ contract RfqSettlement is EIP712 {
         emit RfqFilled(q.maker, taker, q.tokenIn, q.tokenOut, q.amountIn, netOut, fee, mid);
     }
 
+    /// @notice Whether `taker` could settle this quote right now as far as the quote itself goes: unexpired,
+    ///         open to the taker, nonce live, signature valid and maker still eligible. Market guards and
+    ///         balances are left to the fill. Lets makers and clients drop dead quotes before routing them.
+    function quoteFillable(Types.MakerQuote calldata q, bytes calldata signature, address taker)
+        external
+        view
+        returns (bool)
+    {
+        if (q.amountIn == 0 || q.amountOut == 0 || block.timestamp > q.expiry) return false;
+        if (q.taker != address(0) && q.taker != taker) return false;
+        if (q.maker == taker) return false;
+        if (nonceUsed[q.maker][q.nonce] || q.nonce < minNonce[q.maker]) return false;
+        if (!SignatureChecker.isValidSignatureNow(q.maker, quoteDigest(q), signature)) return false;
+        return eligibility.isEligible(q.maker, Roles.MAKER);
+    }
+
     /// @notice Cancels quotes by nonce. The maker can call it whenever they like, paused or not, and can reach
     ///         it through the L1 delayed inbox if the sequencer is censoring.
     function cancel(uint256[] calldata nonces) external {
