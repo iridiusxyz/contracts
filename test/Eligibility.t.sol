@@ -35,6 +35,19 @@ contract EligibilityTest is BaseTest {
         vm.expectRevert(EligibilityRegistry.AdapterNotSet.selector);
         bare.rolesOf(trader);
     }
+
+    function test_isEligibleManyChecksEachAccount() public view {
+        address[] memory accounts = new address[](3);
+        accounts[0] = lp1;
+        accounts[1] = trader;
+        accounts[2] = lp2;
+
+        bool[] memory ok = eligibility.isEligibleMany(accounts, Roles.LP);
+        assertEq(ok.length, 3);
+        assertTrue(ok[0]);
+        assertFalse(ok[1]);
+        assertTrue(ok[2]);
+    }
 }
 
 contract NoAdapterParams {

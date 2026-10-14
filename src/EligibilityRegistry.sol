@@ -34,6 +34,16 @@ contract EligibilityRegistry is IEligibilityRegistry {
         if (!isEligible(account, role)) revert NotEligible(account, role);
     }
 
+    /// @notice Whether each of `accounts` holds `role`, in one call, for back-office tools and indexers that
+    ///         check a whole list of wallets at once.
+    function isEligibleMany(address[] calldata accounts, bytes32 role) external view returns (bool[] memory ok) {
+        IEligibilityAdapter a = adapter();
+        ok = new bool[](accounts.length);
+        for (uint256 i = 0; i < accounts.length; i++) {
+            ok[i] = a.isEligible(accounts[i], role);
+        }
+    }
+
     /// @notice Every protocol role an account holds right now, in one call. Front-ends use it to decide which
     ///         screens to show without three separate round trips through the adapter.
     function rolesOf(address account) external view returns (bool trader, bool lp, bool maker) {
