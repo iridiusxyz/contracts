@@ -261,6 +261,15 @@ contract AnchorVault is ERC20, ReentrancyGuard {
         return used >= cap ? 0 : cap - used;
     }
 
+    /// @notice The value of one whole share (1e18 units) in quote units at the present guarded mid, which
+    ///         is what LP dashboards chart to show returns. Before the first deposit it reports the opening
+    ///         rate. Reverts when the oracle cannot be used.
+    function pricePerShare() external view returns (uint256) {
+        uint256 supply = totalSupply();
+        if (supply == 0) return 1e18 / shareScale;
+        return _totalValue(_liveMid()) * 1e18 / supply;
+    }
+
     /// @notice How much more value, in quote units at the present mid, deposits can add before the TVL cap
     ///         is reached. Deposits revert above it, so front-ends can size an LP's deposit against this
     ///         instead of finding the limit by trial. Reverts when the oracle cannot be used.

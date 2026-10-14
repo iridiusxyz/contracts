@@ -264,4 +264,15 @@ contract VaultTest is BaseTest {
         assertEq(t, tokenOut);
         assertEq(nvdaVault.balanceOf(lp1), shares - shares / 2);
     }
+
+    function test_pricePerShareStartsAtParAndGrowsWithSpread() public {
+        // Shares are minted at one quote unit of value per 1e12 share units for a 6-decimal quote token.
+        assertEq(nvdaVault.pricePerShare(), 1e6);
+        _seed(nvdaVault, NVDA_MID);
+        uint256 before = nvdaVault.pricePerShare();
+        assertApproxEqAbs(before, 1e6, 1);
+
+        _swap(address(usdg), address(nvda), 10_000e6);
+        assertGt(nvdaVault.pricePerShare(), before);
+    }
 }
