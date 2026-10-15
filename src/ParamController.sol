@@ -181,8 +181,18 @@ contract ParamController is IParamController {
     // ---------------------------------------------------------------------
 
     function transferOwnership(address to) external onlyOwner {
+        // Clearing a pending handover has its own call, so a zero or self target here can only be a mistake.
+        if (to == address(0)) revert ZeroAddress();
+        if (to == owner) revert NotPendingOwner();
         pendingOwner = to;
         emit OwnershipTransferStarted(owner, to);
+    }
+
+    /// @notice Withdraws a handover that has not been accepted yet, for example one sent to a wrong address.
+    function cancelOwnershipTransfer() external onlyOwner {
+        if (pendingOwner == address(0)) revert NotPendingOwner();
+        pendingOwner = address(0);
+        emit OwnershipTransferStarted(owner, address(0));
     }
 
     function acceptOwnership() external {

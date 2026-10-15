@@ -347,4 +347,32 @@ contract GovernanceTest is BaseTest {
         vm.stopPrank();
         assertEq(params.riskParams().sequencerGrace, 1 days);
     }
+
+    function test_pendingHandoverCanBeCancelled() public {
+        address wrong = makeAddr("wrong");
+        vm.prank(gov);
+        params.transferOwnership(wrong);
+
+        vm.prank(gov);
+        params.cancelOwnershipTransfer();
+        assertEq(params.pendingOwner(), address(0));
+
+        vm.prank(wrong);
+        vm.expectRevert(ParamController.NotPendingOwner.selector);
+        params.acceptOwnership();
+
+        // Nothing left to cancel.
+        vm.prank(gov);
+        vm.expectRevert(ParamController.NotPendingOwner.selector);
+        params.cancelOwnershipTransfer();
+    }
+
+    function test_handoverRefusesZeroAndSelf() public {
+        vm.startPrank(gov);
+        vm.expectRevert(ParamController.ZeroAddress.selector);
+        params.transferOwnership(address(0));
+        vm.expectRevert(ParamController.NotPendingOwner.selector);
+        params.transferOwnership(gov);
+        vm.stopPrank();
+    }
 }
