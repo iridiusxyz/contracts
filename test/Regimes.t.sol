@@ -360,4 +360,41 @@ contract RegimesTest is BaseTest {
         vm.stopPrank();
         assertEq(address(oracle.sequencerFeed()), address(sequencer));
     }
+
+    function test_feedConfigRefusesTheQuoteAssetAndAMissingFeed() public {
+        vm.startPrank(gov);
+        vm.expectRevert(OracleRouter.InvalidFeedConfig.selector);
+        oracle.configureFeed(
+            address(usdg),
+            address(usdg),
+            AggregatorV3Interface(address(nvdaFeed)),
+            1 hours,
+            2 hours,
+            4 days,
+            2500,
+            1 hours,
+            200,
+            address(0),
+            address(0),
+            address(0),
+            address(0)
+        );
+        vm.expectRevert(OracleRouter.InvalidFeedConfig.selector);
+        oracle.configureFeed(
+            address(nvda),
+            address(usdg),
+            AggregatorV3Interface(address(0)),
+            1 hours,
+            2 hours,
+            4 days,
+            2500,
+            1 hours,
+            200,
+            address(0),
+            address(0),
+            address(0),
+            address(0)
+        );
+        vm.stopPrank();
+    }
 }

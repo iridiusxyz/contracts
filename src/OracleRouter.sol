@@ -124,6 +124,9 @@ contract OracleRouter is IOracleRouter {
         if (stalenessRegular == 0 || stalenessExtended == 0 || stalenessClosed == 0) revert InvalidFeedConfig();
         if (moveCapBps != 0 && moveCapWindow == 0) revert InvalidFeedConfig();
         if (streamAdapter != address(0) && streamDivergenceBps == 0) revert InvalidFeedConfig();
+        // The quote asset is the unit every price is expressed in, so a feed for it prices nothing, and a
+        // missing feed would only fail later on the first quote rather than here.
+        if (token == quoteToken || address(feed) == address(0)) revert InvalidFeedConfig();
         uint8 fd = feed.decimals();
         uint8 qd = IERC20Metadata(quoteToken).decimals();
         uint8 td = IERC20Metadata(token).decimals();
